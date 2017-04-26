@@ -8,6 +8,7 @@ Set-Location tools
 . .\Build-PowershellModule.ps1
 . .\Package-PowershellModule.ps1
 . .\Deploy-PowershellModule.ps1
+Set-Location ..
 ```
 
 2. From the directory where the powershell scripts live.  The psd1 file will need to have the same name as the moduleName variable. The example file is PowershellJvB.psd1 which is what I use on my own machines.
