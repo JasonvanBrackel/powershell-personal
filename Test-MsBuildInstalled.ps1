@@ -1,6 +1,6 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-. .\Get-MsBuildVersion
+. .\Get-MsBuildVersion.ps1
 
 function Test-MsBuildInstalled {
     $versions = Get-MsBuildVersion

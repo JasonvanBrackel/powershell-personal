@@ -17,3 +17,9 @@ Build-PowershellModule $moduleName
 Package-PowershellModule $moduleName
 Deploy-PowershellModule $moduleName
 ```
+
+# The Quick Way
+From the project root
+```powershell
+.\tools\Install-PowershellJvB.ps1
+```
