@@ -3,11 +3,67 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
 
 Describe "Package-ApprendaApplication" {
+
+    ################ Helper Scripts ####################
+    function New-FakeObjectCollection
+    (
+        [string]$name,
+        [string]$path
+    ) 
+    {
+        $count = Get-Random -Minimum 1 -Maximum 5
+        $list = @()
+        for($index = 1; $index -le $count; $index++) {
+            $folderPath = "$path\$([System.IO.Path]::GetRandomFileName())"
+            New-FakeFolder $folderPath | Out-Null
+            $list += ([pscustomobject]@{ Name = "$name$index"; Path = $folderPath})
+        }
+
+        return $list
+    }
+
+    function New-FakeFileCollection
+    (
+        [string]$path
+    )
+    {
+        $count = Get-Random -Minimum 1 -Maximum 5
+        $list = @()
+        for($index = 1; $index -le $count; $index++) {
+            $filePath = "$path\$([System.IO.Path]::GetRandomFileName())"
+            New-Fakefile $filePath | Out-Null
+            $list += $filePath
+        }
+
+        return $list
+    }
+
+    function New-Fakefile
+    (
+        [string]$path
+    ) 
+    {
+        New-Item -ItemType file -Path $path  
+        Set-Content -Path $path -Value (-join ((65..90) + (97..122) | Get-Random -Count (Get-Random -Maximum 40000) | % {[char]$_}))
+    }
+
+    function New-FakeFolder
+    (
+        [string]$path
+    )
+    {
+        New-Item $path -ItemType directory
+        $fakeFileCount = Get-Random -Minimum 1 -Maximum 5
+
+        (1..$fakeFileCount) | New-Fakefile -path "$path\$([System.IO.Path]::GetRandomFileName())"
+    }
+
+    ################ End Helper Scripts #################
     # Create paths for single test files
     $manifestPath = "$testDrive\manifest.xml"
     $warPath = "$testDrive\JavaWebApplication.war"
-    $applicationProvisioningScriptPath = "$testDrive\applicationProvisionScript.sql"
-    $tenantProvisionScriptPath = "$testDrive\tenantProvisionScript.sql"
+    $applicationProvisioningScriptPath = "$testDrive\applicationProvisioningScript.sql"
+    $tenantProvisionScriptPath = "$testDrive\tenantProvisioningScript.sql"
     $patchScript1Path = "$testDrive\patchScriptData1.sql"
     $patchScript2Path = "$testDrive\patchScriptData2.sql"
     $patchScript3Path = "$testDrive\patchScriptSchema1.sql"
@@ -23,7 +79,7 @@ Describe "Package-ApprendaApplication" {
     New-Fakefile $patchScript4Path
     New-Fakefile $tenantProvisionScriptPath
     New-Fakefile $applicationProvisioningScriptPath
-    $services = New-FakeObjectCollection "service" $testDrive
+    $services = New-FakeObjectCollection "services" $testDrive
     $interfaces = New-FakeObjectCollection "interface" $testDrive
     $winServices = New-FakeObjectCollection "winservice" $testDrive
     $linuxServices = New-FakeObjectCollection "linuxService" $testDrive
@@ -35,126 +91,102 @@ Describe "Package-ApprendaApplication" {
                         [pscustomobject]@{Type = "schema"; Path = $patchScript4Path} 
                     )
 
-    $result = Package-ApprendaApplication \
-                -ManifestPath $manifestPath \
-                -Interfaces $interfaces \
-                -Services $services \
-                -Libraries $libraries \
-                -Wars $warPath \
-                -WindowsServices $winServices \
-                -LinuxServices $linuxServices \
-                -ApplicationProvisioningScript $applicationProvisioningScriptPath \
-                -TenantProvisioningScript $tenantProvisionScriptPath \
-                -PatchScripts $patchScripts
+    Package-ApprendaApplication -ArchivePath $archivePath `
+                                -ManifestPath $manifestPath `
+                                -Wars $warPath `
+                                -ApplicationProvisioningScript $applicationProvisioningScriptPath `
+                                -TenantProvisioningScript $tenantProvisionScriptPath `
+                                -PatchScripts $patchScripts `
+                                -Services $services `
+                                -Interfaces $interfaces `
+                                -WindowsServices $winServices `
+                                -LinuxServices $linuxServices `
+                                -Libraries $libraries
+
+
+    $archiveFolder = "$testDrive\archive"
+    Expand-Archive -Path $archivePath -DestinationPath $archiveFolder
+
+    It "should package the manifest in the root of the archive" {
+        $manifestFile = Get-Item -Path "$archiveFolder\manifest.xml"
+        (Get-Content $manifestFile) | Should Be (Get-Content $manifestPath)
+    }
 
     It "should package each service in the services folder." {
         foreach($service in $services) {
-        
+            $fileName = [System.IO.Path]::GetFileName($service.Path)
+            $originalFolder = Get-ChildItem -Path $service.Path -Recurse
+            $serviceFolder = Get-ChildItem -Path "$archiveFolder\services\$($service.Name)" -Recurse
+            $comparision = Compare-Object -ReferenceObject $serviceFolder -DifferenceObject $originalFolder -IncludeEqual
+            $comparision.SideIndicator | Should Be "=="
         }
     }
 
     It "should package each interface in the interfaces folder." {
         foreach($interface in $interfaces) {
-
+            $fileName = [System.IO.Path]::GetFileName($interface.Path)
+            $originalFolder = Get-ChildItem -Path $interface.Path -Recurse
+            $interfaceFolder = Get-ChildItem -Path "$archiveFolder\interfaces\$($interface.Name)" -Recurse
+            $comparision = Compare-Object -ReferenceObject $interfaceFolder -DifferenceObject $originalFolder -IncludeEqual
+            $comparision.SideIndicator | Should Be "=="
         }
     }
 
     It "should package each library into the lib folder under services." {
         foreach($library in $libraries) {
-
+            $fileName = [System.IO.Path]::GetFileName($library)
+            $libraryFile = Get-Item -Path "$archiveFolder\services\lib\$fileName"
+            (Get-Content $libraryFile) | Should Be (Get-Content $library)
         }
     }
 
     It "should package the war in the wars folder" {
+        $warFile = Get-Item -Path "$archiveFolder\wars\JavaWebApplication.war"
+        (Get-Content $warFile) | Should Be (Get-Content $warPath)
         
     }
 
     It "should package the windows services in the winservices folder" {
-        foreach($winService in $winServices) {
-
+        foreach($item in $winServices) {
+            $fileName = [System.IO.Path]::GetFileName($item.Path)
+            $originalFolder = Get-ChildItem -Path $item.Path -Recurse
+            $destinationFolder = Get-ChildItem -Path "$archiveFolder\winservices\$($item.Name)" -Recurse
+            $comparision = Compare-Object -ReferenceObject $destinationFolder -DifferenceObject $originalFolder -IncludeEqual
+            $comparision.SideIndicator | Should Be "=="
         }
     }
 
     It "should package the linuxServices in the linuxservices folder" {
-        foreach($linuxService in $linuxServices) {
-
+        foreach($item in $linuxServices) {
+            $fileName = [System.IO.Path]::GetFileName($item.Path)
+            $originalFolder = Get-ChildItem -Path $item.Path -Recurse
+            $destinationFolder = Get-ChildItem -Path "$archiveFolder\linuxServices\$($item.Name)" -Recurse
+            $comparision = Compare-Object -ReferenceObject $destinationFolder -DifferenceObject $originalFolder -IncludeEqual
+            $comparision.SideIndicator | Should Be "=="
         }
     }
 
     It "should package the application provisioning script in the scripts folder in the persistence folder" {
-        
+        $script = Get-Item -Path "$archiveFolder\persistence\scripts\applicationprovisioningscript.sql"
+        (Get-Content $script) | Should Be (Get-Content $applicationProvisioningScriptPath)
     }
 
     It "should package the tenant provisioning script in the scripts folder in the persistence folder" {
-        
+        $script = Get-Item -Path "$archiveFolder\persistence\scripts\tenantprovisioningscript.sql"
+        (Get-Content $script) | Should Be (Get-Content $tenantProvisionScriptPath)
     }
 
-    It "should package the data patch scripts in the persistence folder in a subfolder named data"{
-
-    }
-
-    It "should package the schema patch scripts in the persistence folder in a subfolder named schema" {
-        
+    It "should package the patch scripts in the persistence folder in a subfolder named for the type of patch script"{
+        foreach($script in $patchScripts) {
+            $fileName = [System.IO.Path]::GetFileName($script.Path)
+            $scriptFile = Get-Item -Path "$archiveFolder\persistence\scripts\$($script.Type)\$fileName" 
+            (Get-Content $scriptFile) | Should Be (Get-Content $script.Path)
+        }
     }
 
     It "should package the application at the provided path" {
-        
+        Test-Path($archivePath) | Should Be $true
     }
-
 }
 
-function New-FakeObjectCollection
-(
-    [string]$name,
-    [string]$path
-) 
-{
-    $count = Get-Random -Minimum 1 -Maximum 5
-    $list = [System.Collections.ArrayList]::new()
-    for($index = 1; $index -le $count; $index++) {
-        $folderPath = Join-Path $path ([System.IO.Path]::GetRandomFileName())
-        New-FakeFolder ($folderPath)
-        $list.Add([pscustomobject]@{ Name = "$name$count"; Path = $folderPath})
-    }
 
-    return $list.ToArray()
-}
-
-function New-FakeFileCollection
-(
-    [string]$path
-)
-{
-    $count = Get-Random -Minimum 1 -Maximum 5
-    $list = [System.Collections.ArrayList]::new()
-    for($index = 1; $index -le $count; $index++) {
-        $filePath = (Join-Path $path ([System.IO.Path]::GetRandomFileName()))
-        New-Fakefile $filePath
-        $list.Add($filePath)
-    }
-
-    return $list.ToArray()
-}
-
-function New-Fakefile
-(
-    [string]$path
-) 
-{
-    New-Item -ItemType "text" -Path $path  
-    Set-Content -Path $path -Value (-join ((65..90) + (97..122) | Get-Random -Count (Get-Random -Maximum 40000) | % {[char]$_}))
-}
-
-function New-FakeFolder
-(
-    [string]$path
-)
-{
-    New-Item
-    $fakeFolderCount = Get-Random -Minimum 1 -Maximum 10
-    $fakeFileCount = Get-Random -Minimum 1 -Maximum 20
-
-
-    (1..$fakeFileCount) | New-Fakefile -path (Join-Path $path ([System.IO.Path]::GetRandomFileName()))
-    (1..$fakeFolderCount) | New-FakeFolder -path (Join-Path $path ([System.IO.Path]::GetRandomFileName()))
-}

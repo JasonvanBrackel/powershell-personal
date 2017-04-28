@@ -8,6 +8,9 @@ $ErrorActionPreference = "Stop"
     .DESCRIPTION
         This Cmdlet is designed to allow to user to describe the layout of binaries to be deployed in an Apprenda Archive from a folder with apprenda application binaries.
 
+    .PARAMETER ArchivePath
+        Path to write the archive zip file as described in (http://docs.apprenda.com/current/creating-app-archives).
+        
     .PARAMETER ManifestPath
         Path to the DeploymentManifest.xml file as described in (http://docs.apprenda.com/current/deployment-manifest).
 
@@ -55,9 +58,8 @@ $ErrorActionPreference = "Stop"
 
     .PARAMETER PatchScripts
         Path to patch scripts for upgrading databases from version to version as described in (http://docs.apprenda.com/current/creating-app-archives#patching)
+        The convention to have them in seperate folders is personal.  The manifest does not require seperate folders
 
-    .PARAMETER ArchivePath
-        Path to write the archive zip file as described in (http://docs.apprenda.com/current/creating-app-archives).
 
     .EXAMPLE
         The example below includes a Deployment Manifest, Two interfaces and an application provisioning script.
@@ -72,6 +74,8 @@ $ErrorActionPreference = "Stop"
 function Package-ApprendaApplication {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
+        [string] $ArchivePath,
         [Parameter()]
         [string] $ManifestPath,
         [Parameter()]
@@ -91,9 +95,7 @@ function Package-ApprendaApplication {
         [Parameter()]
         [string] $TenantProvisioningScript,
         [Parameter()]
-        [System.Object[]]$PatchScripts,
-        [Parameter(Mandatory=$true)]
-        [string] $ArchivePath
+        [System.Object[]]$PatchScripts
     )
 
     ######################## Support Functions ########################
@@ -106,12 +108,16 @@ function Package-ApprendaApplication {
     )
     {
         foreach($item in $collection) {
+            if($item.GetType() -eq [System.Collections.Hashtable]) {
+                $item = [PSCustomObject]$item
+            }
             "Copy $collectionName $($item.Name)"
             $collectionPath = Join-Path -Path $tempDir -ChildPath $collectionFolder
             if(!(Test-Path $collectionPath)){
                 New-Item -ItemType Directory -Path $collectionPath
             }
             $destinationPath = Join-Path -Path $collectionPath -ChildPath $item.Name
+            New-Item -ItemType Directory -Path $destinationPath
             Get-ChildItem -Path $item.Path | Copy-Item -Destination $destinationPath -Recurse -Force
         }
     }
@@ -126,7 +132,7 @@ function Package-ApprendaApplication {
     {
         foreach($path in $paths) {
             "Copying $collectionName"
-            $destinationPath = Join-Path -Path $tempPath -ChildPath $collectionFolder
+            $destinationPath = Join-Path -Path $tempDir -ChildPath $collectionFolder
             if(!(Test-Path $destinationPath)){
                 New-Item -ItemType Directory -Path $destinationPath
             }
@@ -137,13 +143,15 @@ function Package-ApprendaApplication {
     function Copy-ProvisioningScript
     (
         [string]$scriptType,
-        [string]$scriptPath
+        [string]$scriptPath,
+        [string]$tempDir
     ) 
     {
         if(![string]::IsNullOrWhiteSpace($scriptPath) -and (Test-Path $scriptPath))
         {
             "Copying $scriptType"
             $persistencePath = Join-Path $tempDir -ChildPath Persistence
+            $persistencePath = Join-Path $persistencePath -ChildPath scripts
             if(!(Test-Path $persistencePath)) {
                 New-Item -ItemType Directory $persistencePath
             }
@@ -154,13 +162,15 @@ function Package-ApprendaApplication {
 
     function Copy-PatchScripts
     (
-        [System.Object[]]$scripts
+        [System.Object[]]$scripts,
+        [string]$tempDir
     )
     {
         foreach($patchScript in $scripts) {
             "Copying $($patchScript.Type) patch script $($patchScript.Path)"
 
-            $persistencePath = Join-Path $tempDir -ChildPath Persistence
+            $persistencePath = Join-Path $tempDir -ChildPath persistence
+            $persistencePath = Join-Path $persistencePath -ChildPath scripts
             if(!(Test-Path $persistencePath)) {
                 New-Item -ItemType Directory $persistencePath
             }
@@ -171,7 +181,7 @@ function Package-ApprendaApplication {
                 {
                     New-Item -ItemType Directory $scriptPath
                 }
-                Copy-Item -Path $patchScript.Path -Debug $scriptPath
+                Copy-Item -Path $patchScript.Path -Destination $scriptPath
             }
 
             if($patchScript.Type.ToLower() -eq "schema") {
@@ -180,15 +190,24 @@ function Package-ApprendaApplication {
                 {
                     New-Item -ItemType Directory $scriptPath
                 }
-                Copy-Item -Path $patchScript.Path -Debug $scriptPath
+                Copy-Item -Path $patchScript.Path -Destination $scriptPath
             }
         }
     }
 
     ######################## End Support Functions ########################
 
+    $tempDir = New-Item -ItemType Directory -Path "$env:Temp\$([System.Guid]::NewGuid().Guid)"
+    Write-Debug "DEBUG `$tempDir: $tempDir"
+    
     "Copying the Application Manifest."
-    Copy-Item $ManifestPath -Destination $tempDir
+    if(!([string]::IsNullOrWhiteSpace($ManifestPath))) {
+        Copy-Item $ManifestPath -Destination $tempDir
+        "Application Manifest copied."
+    } else {
+        "No Application Manifest found."
+    }
+    
 
     "Copying the Interfaces."
     Copy-ObjectCollection "Interface" $Interfaces "interfaces" $tempDir
@@ -199,7 +218,7 @@ function Package-ApprendaApplication {
     "Services copied."
     
     "Copying Libraries."
-    Copy-PathCollection "Library" $Libraries "lib" $tempDir
+    Copy-PathCollection "Library" $Libraries "services\lib" $tempDir
     "Libraries copied."
 
     "Copying Java Web Application Archives"
@@ -215,21 +234,23 @@ function Package-ApprendaApplication {
     "Linux Services copied."
 
     "Copying the Application Provisoning Script"
-    Copy-ProvisioningScript "Application Provisioning Script" $ApplicationProvisioningScript
+    Copy-ProvisioningScript "Application Provisioning Script" $ApplicationProvisioningScript $tempDir
     "Application Provisioning Script copied."
 
     "Copying the Tenant Provisioning Script"
-    Copy-ProvisioningScript "Tenant Provisioning Script" $TenantProvisioningScript
+    Copy-ProvisioningScript "Tenant Provisioning Script" $TenantProvisioningScript $tempDir
     "Tenant Provisioning Script copied."
 
     "Copying Patch Scripts"
-    Copy-PatchScripts $PatchScripts
+    Copy-PatchScripts $PatchScripts $tempDir
     "Patch Scripts copied."
    
     "Creating the archive"
-    Compress-Archive -Path  $tempDir\* -DestinationPath .\$archivePath -CompressionLevel Optimal -Force
+    Compress-Archive -Path  $tempDir\* -DestinationPath $ArchivePath -CompressionLevel Optimal -Force
 
     "Cleaning up $tempDir"
     Remove-Item $tempDir -Recurse -Force
+
+    return $ArchivePath
 }
     
