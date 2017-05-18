@@ -1,64 +1,9 @@
 ﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
-
+. "$here\Test-Helpers.ps1"
 Describe "Package-ApprendaApplication" {
 
-    ################ Helper Scripts ####################
-    function New-FakeObjectCollection
-    (
-        [string]$name,
-        [string]$path
-    ) 
-    {
-        $count = Get-Random -Minimum 1 -Maximum 5
-        $list = @()
-        for($index = 1; $index -le $count; $index++) {
-            $folderPath = "$path\$([System.IO.Path]::GetRandomFileName())"
-            New-FakeFolder $folderPath | Out-Null
-            $list += ([pscustomobject]@{ Name = "$name$index"; Path = $folderPath})
-        }
-
-        return $list
-    }
-
-    function New-FakeFileCollection
-    (
-        [string]$path
-    )
-    {
-        $count = Get-Random -Minimum 1 -Maximum 5
-        $list = @()
-        for($index = 1; $index -le $count; $index++) {
-            $filePath = "$path\$([System.IO.Path]::GetRandomFileName())"
-            New-Fakefile $filePath | Out-Null
-            $list += $filePath
-        }
-
-        return $list
-    }
-
-    function New-Fakefile
-    (
-        [string]$path
-    ) 
-    {
-        New-Item -ItemType file -Path $path  
-        Set-Content -Path $path -Value (-join ((65..90) + (97..122) | Get-Random -Count (Get-Random -Maximum 40000) | % {[char]$_}))
-    }
-
-    function New-FakeFolder
-    (
-        [string]$path
-    )
-    {
-        New-Item $path -ItemType directory
-        $fakeFileCount = Get-Random -Minimum 1 -Maximum 5
-
-        (1..$fakeFileCount) | New-Fakefile -path "$path\$([System.IO.Path]::GetRandomFileName())"
-    }
-
-    ################ End Helper Scripts #################
     # Create paths for single test files
     $manifestPath = "$testDrive\manifest.xml"
     $warPath = "$testDrive\JavaWebApplication.war"

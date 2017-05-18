@@ -18,7 +18,7 @@ function Build-PowershellModule {
         New-Item -ItemType Directory -Path $buildPath
                 
         "Gathering Scripts"
-        $file = Get-ChildItem -Path *.ps1 -Exclude *.Tests.ps1, *Powershell* -Recurse  | Get-Content | where { !($_.StartsWith('$ErrorActionPreference', "CurrentCultureIgnoreCase")) -and !($_.StartsWith("Set-StrictMode", "CurrentCultureIgnoreCase")) -and !($_.StartsWith('.', "CurrentCultureIgnoreCase")) }
+        $file = Get-ChildItem -Path *.ps1 -Exclude Test-Helpers.ps1, *.Tests.ps1, *Powershell* -Recurse  | Get-Content | where { !($_.StartsWith('$ErrorActionPreference', "CurrentCultureIgnoreCase")) -and !($_.StartsWith("Set-StrictMode", "CurrentCultureIgnoreCase")) -and !($_.StartsWith('.', "CurrentCultureIgnoreCase")) -and !($_.StartsWith('. "$here', 'CurrentCultureIgnoreCase')) }
 
 
         "Writing $ModuleName.psm1"

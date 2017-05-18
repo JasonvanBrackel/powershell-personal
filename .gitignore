@@ -240,4 +240,10 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+
+# Build artifacts
 PowershellJvB/
+PowershellJvB.zip
+
+#vs code
+.vscode/

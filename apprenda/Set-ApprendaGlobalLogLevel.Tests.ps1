@@ -1,6 +1,7 @@
 ﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
+. "$here\Test-Helpers.ps1"
 
 Describe "Set-ApprendaGlobalLogLevel" {
     Context "User is not logged in." {
@@ -13,19 +14,7 @@ Describe "Set-ApprendaGlobalLogLevel" {
 
     Mock Test-Path { return $true }
     #Create a mock apprenda session
-    $fakeSession = @{
-        url = "https://apps.fake"
-        username = "fakeUser"
-        password = ("fakePassword" | ConvertTo-SecureString -AsPlainText -Force | ConvertFrom-SecureString)
-        tenantAlias = "fakeTenant"
-        sessionToken = "fakeSessionToken"
-        headers = @{
-            "Content-Type"="application/json" 
-            "ApprendaSessionToken"="fakeSessionToken"
-            "charset"="UTF-8" 
-        }
-    }
-    Set-Variable -Scope Global -Name apprendaSession -Value $fakeSession
+    New-MockApprendaSession
     
     $fakeUrl = "$($apprendaSession.url)/soc/LogAdministration.asmx/SetLogLevel"
 

@@ -28,6 +28,7 @@ function Sudo
         $p.StartInfo = $psi
         $p.Start() | Out-Null
         $p.WaitForExit()
+        Read-Host -Prompt "Press any key to exit."
     }
 }
 
