@@ -1,7 +1,8 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-<#
+function Package-ApprendaApplication {
+    <#
     .SYNOPSIS
         Packages an apprenda archive from an existing source folder
 
@@ -71,10 +72,9 @@ $ErrorActionPreference = "Stop"
         -archivePath $archivePath
 
     #>
-function Package-ApprendaApplication {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string] $ArchivePath,
         [Parameter()]
         [string] $ManifestPath,
@@ -105,15 +105,14 @@ function Package-ApprendaApplication {
         [System.Object[]]$collection,
         [string]$collectionFolder,
         [string]$tempDir
-    )
-    {
-        foreach($item in $collection) {
-            if($item.GetType() -eq [System.Collections.Hashtable]) {
+    ) {
+        foreach ($item in $collection) {
+            if ($item.GetType() -eq [System.Collections.Hashtable]) {
                 $item = [PSCustomObject]$item
             }
             "Copy $collectionName $($item.Name)"
             $collectionPath = Join-Path -Path $tempDir -ChildPath $collectionFolder
-            if(!(Test-Path $collectionPath)){
+            if (!(Test-Path $collectionPath)) {
                 New-Item -ItemType Directory -Path $collectionPath
             }
             $destinationPath = Join-Path -Path $collectionPath -ChildPath $item.Name
@@ -128,12 +127,11 @@ function Package-ApprendaApplication {
         [System.Object[]]$paths,
         [string]$collectionFolder,
         [string]$tempDir
-    )
-    {
-        foreach($path in $paths) {
+    ) {
+        foreach ($path in $paths) {
             "Copying $collectionName"
             $destinationPath = Join-Path -Path $tempDir -ChildPath $collectionFolder
-            if(!(Test-Path $destinationPath)){
+            if (!(Test-Path $destinationPath)) {
                 New-Item -ItemType Directory -Path $destinationPath
             }
             Get-ChildItem -Path $path | Copy-Item -Destination $destinationPath -Recurse -Force
@@ -145,14 +143,12 @@ function Package-ApprendaApplication {
         [string]$scriptType,
         [string]$scriptPath,
         [string]$tempDir
-    ) 
-    {
-        if(![string]::IsNullOrWhiteSpace($scriptPath) -and (Test-Path $scriptPath))
-        {
+    ) {
+        if (![string]::IsNullOrWhiteSpace($scriptPath) -and (Test-Path $scriptPath)) {
             "Copying $scriptType"
             $persistencePath = Join-Path $tempDir -ChildPath Persistence
             $persistencePath = Join-Path $persistencePath -ChildPath scripts
-            if(!(Test-Path $persistencePath)) {
+            if (!(Test-Path $persistencePath)) {
                 New-Item -ItemType Directory $persistencePath
             }
             Copy-Item -Path $scriptPath -Destination $persistencePath
@@ -164,30 +160,27 @@ function Package-ApprendaApplication {
     (
         [System.Object[]]$scripts,
         [string]$tempDir
-    )
-    {
-        foreach($patchScript in $scripts) {
+    ) {
+        foreach ($patchScript in $scripts) {
             "Copying $($patchScript.Type) patch script $($patchScript.Path)"
 
             $persistencePath = Join-Path $tempDir -ChildPath persistence
             $persistencePath = Join-Path $persistencePath -ChildPath scripts
-            if(!(Test-Path $persistencePath)) {
+            if (!(Test-Path $persistencePath)) {
                 New-Item -ItemType Directory $persistencePath
             }
 
-            if($patchScript.Type.ToLower() -eq "data") {
+            if ($patchScript.Type.ToLower() -eq "data") {
                 $scriptPath = Join-Path $persistencePath -ChildPath data
-                if(!(Test-Path $scriptPath))
-                {
+                if (!(Test-Path $scriptPath)) {
                     New-Item -ItemType Directory $scriptPath
                 }
                 Copy-Item -Path $patchScript.Path -Destination $scriptPath
             }
 
-            if($patchScript.Type.ToLower() -eq "schema") {
+            if ($patchScript.Type.ToLower() -eq "schema") {
                 $scriptPath = Join-Path $persistencePath -ChildPath schema
-                if(!(Test-Path $scriptPath))
-                {
+                if (!(Test-Path $scriptPath)) {
                     New-Item -ItemType Directory $scriptPath
                 }
                 Copy-Item -Path $patchScript.Path -Destination $scriptPath
@@ -201,10 +194,11 @@ function Package-ApprendaApplication {
     Write-Debug "DEBUG `$tempDir: $tempDir"
     
     "Copying the Application Manifest."
-    if(!([string]::IsNullOrWhiteSpace($ManifestPath))) {
+    if (!([string]::IsNullOrWhiteSpace($ManifestPath))) {
         Copy-Item $ManifestPath -Destination $tempDir
         "Application Manifest copied."
-    } else {
+    }
+    else {
         "No Application Manifest found."
     }
     

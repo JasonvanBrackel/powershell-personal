@@ -17,7 +17,7 @@ Describe "New-ApprendaAddOn" {
     Context "User is not logged in." {
         Remove-Variable -Name apprendaSession -Scope Global -ErrorAction SilentlyContinue
         It "should throw an error that the user was not logged in." {
-            { New-ApprendaAddOn  } | Should throw "No current Apprenda Session found.  Aborting."
+            { New-ApprendaAddOn -Alias "don'tmatter" -Path "alsodoesntmatter"  } | Should throw "No current Apprenda Session found.  Aborting."
         }
     }
 

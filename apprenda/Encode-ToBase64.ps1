@@ -1,7 +1,8 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-<# 
+function Encode-ToBase64 {
+    <# 
     .SYNOPSIS
         Returns a Base64 string representation of a file
     
@@ -14,13 +15,11 @@ $ErrorActionPreference = 'Stop'
     .EXAMPLE
         Encode-ToBase64 -Path "C:\Temp\AFile.zip"
 #>
-
-function Encode-ToBase64 {
     [CmdletBinding()]
     param(
         [string]$Path
     ) process {
-        $bytes = Get-Content $expectedPath -Encoding Byte
+        $bytes = Get-Content $Path -Encoding Byte
         $string = [System.Convert]::ToBase64String($bytes)
         return $string
     }

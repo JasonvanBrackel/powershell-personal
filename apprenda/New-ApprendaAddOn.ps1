@@ -3,10 +3,27 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$here\Encode-ToBase64.ps1"
 
+
 function New-ApprendaAddOn {
+    <#
+        .SYNOPSIS
+            Creates a new Apprenda AddOn in the soc
+        .PARAMETER Alias
+            Alias of the AddOn to be created
+        .PARAMETER Path
+            Path to the AddOn archive
+        .EXAMPLE
+            Creates an add on called logstash
+            New-ApprendaAddOn -Alias logstash
+        .LINK
+            Apprenda Platform-AddOns
+            http://docs.apprenda.com/current/addons        
+    #>
     [CmdletBinding()]
     param(
-        [string]$Alias = "",
+        [Parameter(Mandatory=$true)] 
+        [string]$Alias,
+        [Parameter(Mandatory=$true)]         
         [string]$Path
     )
     process {

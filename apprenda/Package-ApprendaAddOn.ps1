@@ -1,7 +1,8 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-<#
+function Package-ApprendaAddOn {
+    <#
     .SYNOPSIS
         Packages an apprenda addon archive from an existing sources.
     .DESCRIPTION
@@ -37,19 +38,17 @@ $ErrorActionPreference = 'Stop'
         Package-ApprendaAddOn -ArchivePath $addOnPath -AddOnPath "./src/AddOn/bin/$configuration" -ManifestPath "./src/Manifests/AddonManifest.xml" -IconPath "./src/Icons/logstash.gif"
 
     #>
-function Package-ApprendaAddOn 
-{
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ArchivePath,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$AddOnPath,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$ManifestPath,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$IconPath,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [string]$APIPath
            
     )
@@ -57,55 +56,59 @@ function Package-ApprendaAddOn
         $tempDirectory = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString())
         New-Item $tempDirectory -ItemType Directory -Force
         
-        if(!(Test-Path($AddOnPath))) {
+        if (!(Test-Path($AddOnPath))) {
             throw "Apprenda Add-On dll or Add-On folders not found at $AddOnPath."   
-        } else {
+        }
+        else {
             Write-Host "Packaging $AddOnPath"
-            if((Get-Item $AddOnPath) -is [System.IO.DirectoryInfo]) {
+            if ((Get-Item $AddOnPath) -is [System.IO.DirectoryInfo]) {
                 Get-ChildItem $AddOnPath -Recurse | % { Copy-Item -Path $_.FullName -Destination $tempDirectory }
-            } else {
-               Copy-Item -Path (Get-ChildItem $AddOnPath -Recurse) -Destination $tempDirectory
+            }
+            else {
+                Copy-Item -Path (Get-ChildItem $AddOnPath -Recurse) -Destination $tempDirectory
             }
         }
 
-        if(!(Test-Path($ManifestPath))) {
+        if (!(Test-Path($ManifestPath))) {
             throw "Apprenda Add-On manifest file not found at $ManifestPath"
-        } else {
+        }
+        else {
             Write-Host "Packaging $ManifestPath"
             Copy-Item -Path (Get-ChildItem $ManifestPath -Recurse) -Destination $tempDirectory
         }
 
-        if(![string]::IsNullOrWhiteSpace($APIPath))
-        {
-            if(!(Test-Path($APIPath))) {
+        if (![string]::IsNullOrWhiteSpace($APIPath)) {
+            if (!(Test-Path($APIPath))) {
                 throw "Apprenda SaaSGrid.API.dll was not found at $APIPath."
-            } else {
+            }
+            else {
                 Write-Host "Packaging $APIPath"
                 Copy-Item -Path (Get-ChildItem $APIPath -Recurse) -Destination $tempDirectory
             }
-        } else {
+        }
+        else {
             "No APIPath provided checking the GAC for SaaSGrid.API.dll"
             $APIPath = Get-ChildItem -Path "$env:windir\assembly\GAC*" -Include "SaaSGrid.API.dll" | Select-Object -First 1
-            if([string]::IsNullOrWhiteSpace($APIPath))
-            {
+            if ([string]::IsNullOrWhiteSpace($APIPath)) {
                 throw "Apprenda SaaSGrid.API.dll was not found in the Global Assembly Cache."
             }
 
-            if(!(Test-Path($APIPath))) {
+            if (!(Test-Path($APIPath))) {
                 throw "Apprenda SaaSGrid.API.dll was not found in the Global Assembly Cache."
-            } else {
-               Write-Host "Packaging $APIPath"
-               Copy-Item -Path (Get-ChildItem $APIPath -Recurse) -Destination $tempDirectory
+            }
+            else {
+                Write-Host "Packaging $APIPath"
+                Copy-Item -Path (Get-ChildItem $APIPath -Recurse) -Destination $tempDirectory
             }
         }
 
-        if(![string]::IsNullOrWhiteSpace($IconPath))
-        {
-            if(!(Test-Path($IconPath))) {
+        if (![string]::IsNullOrWhiteSpace($IconPath)) {
+            if (!(Test-Path($IconPath))) {
                 throw "Add-On Icon was not found at $IconPath."
-            } else {
+            }
+            else {
                 Write-Host "Packaging $IconPath"
-               Copy-Item -Path (Get-ChildItem $IconPath -Recurse) -Destination $tempDirectory
+                Copy-Item -Path (Get-ChildItem $IconPath -Recurse) -Destination $tempDirectory
             }
         } 
 

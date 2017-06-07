@@ -2,16 +2,29 @@
 $ErrorActionPreference = 'Stop'
 
 function Set-ApprendaGlobalLogLevel {
-[CmdletBinding()]
+    <#
+        .SYNOPSIS
+            Sets the global log level in the Apprenda SOC
+        .DESCRIPTION
+            Sets the global log level in the Apprenda SOC.  Acceptable values are 
+            "debug", "info", "warn", "error", "fatal"
+        .PARAMETER LogLevel
+            The log level to set
+        .EXAMPLE
+            Sets log level to FATAL
+            Set-ApprendaGlobalLogLevel -LogLevel "fatal"
+
+    #>
+    [CmdletBinding()]
     param(
         [string]$LogLevel
     )
     process {
-        if(!(Test-Path variable:global:apprendasession)) {
+        if (!(Test-Path variable:global:apprendasession)) {
             throw "No current Apprenda Session found.  Aborting."
         } 
 
-        switch($LogLevel) {
+        switch ($LogLevel) {
             "debug" {
                 $newLevel = 1
             } 
@@ -39,10 +52,10 @@ function Set-ApprendaGlobalLogLevel {
         # See http://social.technet.microsoft.com/wiki/contents/articles/29863.powershell-rest-api-invoke-restmethod-gotcha.aspx
         $ServicePoint = [System.Net.ServicePointManager]::FindServicePoint($url)
         $response = Invoke-RestMethod `
-		  -Method Post `
-		  -Uri $url `
-		  -Headers $apprendaSession.headers `
-          -Body $body
+            -Method Post `
+            -Uri $url `
+            -Headers $apprendaSession.headers `
+            -Body $body
         $ServicePoint.CloseConnectionGroup("")
 
         return $response
